@@ -1,0 +1,23 @@
+---
+import { Image as AstroImage } from 'astro:assets';
+import type { ImageMetadata } from 'astro';
+
+interface Props {
+	src: ImageMetadata;
+	alt: string;
+	width: number;
+	height: number;
+	href?: string;
+}
+
+const { src, alt, width, height, href } = Astro.props;
+---
+{
+	href ? (
+		<a href={href} rel="nofollow">
+			<AstroImage src={src} alt={alt} width={width} height={height} />
+		</a>
+	) : (
+		<AstroImage src={src} alt={alt} width={width} height={height} />
+	)
+}
