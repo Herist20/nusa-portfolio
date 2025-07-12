@@ -7,7 +7,15 @@ import ContactCTA from '../../components/ContactCTA.astro';
 import Hero from '../../components/Hero.astro';
 import Icon from '../../components/Icon.astro';
 import Pill from '../../components/Pill.astro';
-import { render } from 'astro:content';
+import { type CollectionEntry, render } from 'astro:content';
+
+import BaseLayout from '../../layouts/BaseLayout.astro';
+
+import ContactCTA from '../../components/ContactCTA.astro';
+import Hero from '../../components/Hero.astro';
+import Icon from '../../components/Icon.astro';
+import Pill from '../../components/Pill.astro';
+import CallToAction from '../../components/CallToAction.astro';
 
 
 interface Props {
@@ -51,6 +59,10 @@ const { Content } = await render(entry);
 					<div class="content">
 						<Content />
 					</div>
+					<CallToAction href={`/work/${entry.id}`}>
+						View Full Project
+						<Icon icon="arrow-right" size="1.2em" />
+					</CallToAction>
 				</div>
 			</main>
 		</div>

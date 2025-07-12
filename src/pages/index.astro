@@ -1,5 +1,5 @@
 ---
-import { getCollection } from 'astro:content';
+import { getCollection, render } from 'astro:content';
 
 // Layout import — provides basic page elements: <head>, <nav>, <footer> etc.
 import BaseLayout from '../layouts/BaseLayout.astro';
@@ -12,6 +12,8 @@ import Icon from '../components/Icon.astro';
 import Pill from '../components/Pill.astro';
 import PortfolioPreview from '../components/PortfolioPreview.astro';
 
+import WorkPopup from '../components/WorkPopup.astro';
+
 // Page section components
 import ContactCTA from '../components/ContactCTA.astro';
 import Skills from '../components/Skills.astro';
@@ -20,9 +22,29 @@ import portrait from '../assets/portrait.jpg';
 
 
 // Content Fetching: List four most recent work projects
-const projects = (await getCollection('work'))
+const entries = (await getCollection('work'))
 	.sort((a, b) => b.data.publishDate.valueOf() - a.data.publishDate.valueOf())
 	.slice(0, 4);
+
+// Pre-render each MD body to a <Content> component
+// and compute a slug‐safe "sanitizedId" for the template.
+const projects = await Promise.all(
+	entries.map(async (entry) => {
+		// render() is the .md → Astro component step
+		const { Content } = await render(entry);
+		return {
+			id: entry.id,                            // e.g. "nested/duvet-genius"
+			sanitizedId: entry.id.replace(/\//g, '-'), // e.g. "nested-duvet-genius"
+			entry: entry,
+			title: entry.data.title,
+			tagline: entry.data.description,
+			tags: entry.data.tags,
+			img: entry.data.img,
+			img_alt: entry.data.img_alt,
+			Content,
+		};
+	})
+);
 
 // Full Astro Component Syntax:
 // https://docs.astro.build/basics/astro-components/
@@ -65,9 +87,9 @@ const projects = (await getCollection('work'))
 				<div class="gallery">
 					<Grid variant="offset">
 						{
-							projects.map((project) => (
+							projects.map((proj) => (
 								<li>
-									<PortfolioPreview project={project} />
+									<PortfolioPreview project={proj.entry} popup />
 								</li>
 							))
 						}
@@ -87,7 +109,86 @@ const projects = (await getCollection('work'))
 
 		<ContactCTA />
 	</div>
+
+	<!-- HIDDEN TEMPLATES with full content and our Go-to-page link -->
+	{
+		projects.map((proj) => (
+			<template id={`tmpl-${proj.sanitizedId}`}>
+				<div class="popup-detail">
+					<h2 class="title">{proj.title}</h2>
+					<img
+						class="hero-image"
+						src={proj.img.src}
+						alt={proj.img_alt}
+						width={proj.img.width}
+						height={proj.img.height}
+					/>
+					<p class="tagline">{proj.tagline}</p>
+					<div class="tags">
+						{proj.tags.map((tag) => (
+							<span class="tag">{tag}</span>
+						))}
+					</div>
+					<div class="content">
+						<proj.Content />
+					</div>
+					<div style="margin-top:1.5rem;text-align:center;">
+						<a class="go-to-work-btn" href={`/work/${proj.id}`}>
+							Go to Work Page →
+						</a>
+					</div>
+				</div>
+			</template>
+		))
+	}
+
+	<!-- INSERT THE POPUP MARKUP -->
+	<WorkPopup />
+
+	<!-- INLINE SCRIPT to wire up open/close & content‐cloning -->
+	<script is:inline>
+		document.addEventListener('DOMContentLoaded', () => {
+			const popup = document.getElementById('work-popup');
+			const inner = popup.querySelector('.popup-inner-content');
+
+			// open on any .card[data-id]
+			document.querySelectorAll('.card[data-id]').forEach((card) => {
+				card.addEventListener('click', (e) => {
+					e.preventDefault();
+					const id = card.getAttribute('data-id');
+					const safeId = id.replace(/\//g, '-');
+					const tmpl = document.getElementById(`tmpl-${safeId}`);
+					if (!tmpl) return;
+					// clear old
+					inner.innerHTML = '';
+					// clone fresh
+					inner.appendChild(tmpl.content.cloneNode(true));
+					popup.classList.add('open');
+				});
+			});
+
+			// close button
+			popup.querySelector('#close-popup')
+				.addEventListener('click', () => popup.classList.remove('open'));
+
+			// clicking the overlay (outside content) closes
+			popup.addEventListener('click', (e) => {
+				if (e.target.id === 'work-popup') {
+					popup.classList.remove('open');
+				}
+			});
+
+			// ESC key closes
+			document.addEventListener('keydown', (e) => {
+				if (e.key === 'Escape' && popup.classList.contains('open')) {
+					popup.classList.remove('open');
+				}
+			});
+		});
+	</script>
 </BaseLayout>
+
+
 
 <style>
 	.hero {
